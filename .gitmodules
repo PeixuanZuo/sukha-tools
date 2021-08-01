@@ -1,0 +1,3 @@
+[submodule "sukha_tools/external/rocmProfileData"]
+	path = sukha_tools/external/rocmProfileData
+	url = https://github.com/ROCmSoftwarePlatform/rocmProfileData.git

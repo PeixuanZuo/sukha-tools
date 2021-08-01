@@ -1,25 +1,32 @@
+import torch.cuda.nvtx as nvtx
 
-
-import ctypes
-roctx = ctypes.cdll.LoadLibrary('/opt/rocm/lib/libroctx64.so')
-roctr = ctypes.cdll.LoadLibrary('/opt/rocm/lib/libroctracer64.so')
-
+try:
+    import ctypes
+    roctx = ctypes.cdll.LoadLibrary('/opt/rocm/lib/libroctx64.so')
+    # roctx.roctxRangePushA(label.encode('utf-8'))
+    # roctx.roctxRangePop()    
+    roctr = ctypes.cdll.LoadLibrary('/opt/rocm/lib/libroctracer64.so')
+    # roctr.roctracer_start()
+    # roctr.roctracer_stop()
+except:
+    pass
+    
 # annotate code segment with NVTX or ROCTX using context manager, e.g.
 # with gputx_range('forward-pass'):
 #     do_forward_pass(sample)
 from contextlib import contextmanager
 @contextmanager
 def gputx_range(label):
-    roctx.roctxRangePushA(label.encode('utf-8'))
+    nvtx.range_push(label.encode('utf-8'))
     try:
         yield
     finally:
-        roctx.roctxRangePop()
+        nvtx.range_pop()
 
 # decorate function with GPUTX ranges, e.g.
 # @gputx_wrap
-# prepare_sample(sample):
-#     return sample + 1
+# my_function(args):
+#     <function_body>
 import functools
 def gputx_wrap(func):
     @functools.wraps(func)
@@ -79,10 +86,10 @@ def GputxWrappedModel(model, max_level=10, name=None):
         name = name + ': ' + type(model).__name__
 
     def push(*args, _name=name, **kwargs):
-        roctx.roctxRangePushA(_name.encode('utf-8'))
+        nvtx.range_push(_name.encode('utf-8'))
 
     def pop(*args, _name=name, **kwargs):
-        roctx.roctxRangePop()
+        nvtx.range_pop()
 
     model.register_forward_pre_hook(push)
     model.register_forward_hook(pop)

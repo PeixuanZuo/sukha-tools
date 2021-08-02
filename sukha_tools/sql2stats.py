@@ -90,21 +90,21 @@ else:
                 inner join CUPTI_ACTIVITY_KIND_RUNTIME as runtime on kernels.correlationId = runtime.correlationId
         ''')
     
-connection.execute('''
-    insert into ops_with_launch_time
-        select
-            kernels.start as op_id, 
-            runtime.start as api_start,
-            kernels.start as op_start,
-            kernels.end-kernels.start as duration, 
-            "MemSet" as op_type,
-            "[CUDA memset]" as description,
-            "misc" as category
-        from CUPTI_ACTIVITY_KIND_MEMSET as kernels 
-            inner join StringIds as strings on strings.id == kernels.memKind 
-            inner join CUPTI_ACTIVITY_KIND_RUNTIME as runtime on kernels.correlationId = runtime.correlationId
-    ''')
-
+    connection.execute('''
+        insert into ops_with_launch_time
+            select
+                kernels.start as op_id, 
+                runtime.start as api_start,
+                kernels.start as op_start,
+                kernels.end-kernels.start as duration, 
+                "MemSet" as op_type,
+                "[CUDA memset]" as description,
+                "misc" as category
+            from CUPTI_ACTIVITY_KIND_MEMSET as kernels 
+                inner join StringIds as strings on strings.id == kernels.memKind 
+                inner join CUPTI_ACTIVITY_KIND_RUNTIME as runtime on kernels.correlationId = runtime.correlationId
+        ''')
+    
 
 # find the requested user ranges
 if is_rocm_pytorch:

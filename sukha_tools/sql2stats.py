@@ -2,6 +2,14 @@
 import sqlite3
 import argparse
 
+# For ROCMm create SQL(=trace.rpd) trace file using rpd_tracer (get permissions to git submodule)
+# cp empty.rpd trace.rpd; LD_PRELOAD=/myworkspace/sukha-tools/sukha_tools/external/rocmProfileData/rpd_tracer/rpd_tracer.so <program>
+# empty.rpd is an empty SQL database. Scope tracing range using roctr.roctracer_start() and roctr.rotracer_stop()
+
+# For NVIDIA create SQL trace file using nsys bundled with CUDA 11.4
+# nsys profile --trace=nvtx,cuda --export=sqlite --capture-range=cudaProfilerApi --capture-range-end=stop --force-overwrite true --output=ort-nvtx-cuda <program>
+# Scope tracing range using torch.cuda.profiler.start() and torch.cuda.profiler.stop()
+
 parser = argparse.ArgumentParser(description='collect operators within roctxrange')
 parser.add_argument('input_rpd', type=str, help="input rpd db")
 parser.add_argument('range_like', type=str, help="roctx range queried with sql like")

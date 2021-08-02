@@ -66,7 +66,7 @@ class GputxWrappedIterator:
         return self
     def __next__(self):
         self.count += 1
-        label = self.label if not counter else '{}-{}'.format(self.label, self.count)
+        label = self.label if not self.counter else '{}-{}'.format(self.label, self.count)
         with gputx_range(label):
             return next(self.iterator)
     def __getattr__(self, attr):

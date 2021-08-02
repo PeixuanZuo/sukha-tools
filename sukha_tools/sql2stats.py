@@ -8,6 +8,7 @@ parser.add_argument('range_like', type=str, help="roctx range queried with sql l
 args = parser.parse_args()
 
 import torch
+from torch.utils.cpp_extension import ROCM_HOME
 is_rocm_pytorch = (True if ((torch.version.hip is not None) and (ROCM_HOME is not None)) else False)
 
 connection = sqlite3.connect(args.input_rpd)

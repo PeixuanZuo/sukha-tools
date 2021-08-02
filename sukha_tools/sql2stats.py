@@ -7,6 +7,8 @@ parser.add_argument('input_rpd', type=str, help="input rpd db")
 parser.add_argument('range_like', type=str, help="roctx range queried with sql like")
 args = parser.parse_args()
 
+import torch
+is_rocm_pytorch = (True if ((torch.version.hip is not None) and (ROCM_HOME is not None)) else False)
 
 connection = sqlite3.connect(args.input_rpd)
 
@@ -22,71 +24,71 @@ connection.execute('''
         category varchar(256) 
         )''')
 
-# ROCm rpd_tracer
-#connection.execute('''
-#    insert into ops_with_launch_time
-#        select 
-#            rocpd_api_ops.id, 
-#            rocpd_api.start, 
-#            rocpd_op.start, 
-#            rocpd_op.end-rocpd_op.start, 
-#            B.string as op_type,
-#            case when length(A.string) > 0 then A.string else B.string end as description,
-#            "misc" as category
-#        from rocpd_api_ops 
-#            inner join rocpd_api on rocpd_api_ops.api_id = rocpd_api.id 
-#            inner join rocpd_op on rocpd_api_ops.op_id = rocpd_op.id 
-#            inner join rocpd_string A on A.id = rocpd_op.description_id 
-#            inner join rocpd_string B ON B.id = rocpd_op.opType_id''')
-
-# CUDA nsys sqlite
-connection.execute('''
-    insert into ops_with_launch_time
-        select
-            kernels.start as op_id, 
-            runtime.start as api_start,
-            kernels.start as op_start,
-            kernels.end-kernels.start as duration, 
-            "KernelExecution" as op_type,
-            strings.value as description,
-            "misc" as category
-        from CUPTI_ACTIVITY_KIND_KERNEL as kernels 
-            inner join StringIds as strings on strings.id == kernels.demangledName 
-            inner join CUPTI_ACTIVITY_KIND_RUNTIME as runtime on kernels.correlationId = runtime.correlationId
-    ''')
-
-
-connection.execute('''
-    create temporary table MemcpyOperationStrings (id INTEGER PRIMARY KEY, name TEXT)
-    ''')
-
-connection.execute('''
-    insert into MemcpyOperationStrings (id, name) values
-        (0, '[CUDA memcpy Unknown]'), (1, '[CUDA memcpy HtoD]'),
-        (2, '[CUDA memcpy DtoH]'), (3, '[CUDA memcpy HtoA]'),
-        (4, '[CUDA memcpy AtoH]'), (5, '[CUDA memcpy AtoA]'),
-        (6, '[CUDA memcpy AtoD]'), (7, '[CUDA memcpy DtoA]'),
-        (8, '[CUDA memcpy DtoD]'), (9, '[CUDA memcpy HtoH]'),
-        (10, '[CUDA memcpy PtoP]'), (11, '[CUDA Unified Memory memcpy HtoD]'),
-        (12, '[CUDA Unified Memory memcpy DtoH]'),
-        (13, '[CUDA Unified Memory memcpy DtoD]'); 
-    ''')
-
-connection.execute('''
-    insert into ops_with_launch_time
-        select
-            kernels.start as op_id, 
-            runtime.start as api_start,
-            kernels.start as op_start,
-            kernels.end-kernels.start as duration, 
-            "MemCpy" as op_type,
-            strings.name as description,
-            "misc" as category
-        from CUPTI_ACTIVITY_KIND_MEMCPY as kernels 
-            inner join MemcpyOperationStrings strings on strings.id == kernels.copyKind 
-            inner join CUPTI_ACTIVITY_KIND_RUNTIME as runtime on kernels.correlationId = runtime.correlationId
-    ''')
-
+if is_rocm_pytorch:
+    # ROCm rpd_tracer
+    connection.execute('''
+        insert into ops_with_launch_time
+            select 
+                rocpd_api_ops.id, 
+                rocpd_api.start, 
+                rocpd_op.start, 
+                rocpd_op.end-rocpd_op.start, 
+                B.string as op_type,
+                case when length(A.string) > 0 then A.string else B.string end as description,
+                "misc" as category
+            from rocpd_api_ops 
+                inner join rocpd_api on rocpd_api_ops.api_id = rocpd_api.id 
+                inner join rocpd_op on rocpd_api_ops.op_id = rocpd_op.id 
+                inner join rocpd_string A on A.id = rocpd_op.description_id 
+                inner join rocpd_string B ON B.id = rocpd_op.opType_id''')
+else:
+    # CUDA nsys sqlite
+    connection.execute('''
+        insert into ops_with_launch_time
+            select
+                kernels.start as op_id, 
+                runtime.start as api_start,
+                kernels.start as op_start,
+                kernels.end-kernels.start as duration, 
+                "KernelExecution" as op_type,
+                strings.value as description,
+                "misc" as category
+            from CUPTI_ACTIVITY_KIND_KERNEL as kernels 
+                inner join StringIds as strings on strings.id == kernels.demangledName 
+                inner join CUPTI_ACTIVITY_KIND_RUNTIME as runtime on kernels.correlationId = runtime.correlationId
+        ''')
+     
+    connection.execute('''
+        create temporary table MemcpyOperationStrings (id INTEGER PRIMARY KEY, name TEXT)
+        ''')
+    
+    connection.execute('''
+        insert into MemcpyOperationStrings (id, name) values
+            (0, '[CUDA memcpy Unknown]'), (1, '[CUDA memcpy HtoD]'),
+            (2, '[CUDA memcpy DtoH]'), (3, '[CUDA memcpy HtoA]'),
+            (4, '[CUDA memcpy AtoH]'), (5, '[CUDA memcpy AtoA]'),
+            (6, '[CUDA memcpy AtoD]'), (7, '[CUDA memcpy DtoA]'),
+            (8, '[CUDA memcpy DtoD]'), (9, '[CUDA memcpy HtoH]'),
+            (10, '[CUDA memcpy PtoP]'), (11, '[CUDA Unified Memory memcpy HtoD]'),
+            (12, '[CUDA Unified Memory memcpy DtoH]'),
+            (13, '[CUDA Unified Memory memcpy DtoD]'); 
+        ''')
+    
+    connection.execute('''
+        insert into ops_with_launch_time
+            select
+                kernels.start as op_id, 
+                runtime.start as api_start,
+                kernels.start as op_start,
+                kernels.end-kernels.start as duration, 
+                "MemCpy" as op_type,
+                strings.name as description,
+                "misc" as category
+            from CUPTI_ACTIVITY_KIND_MEMCPY as kernels 
+                inner join MemcpyOperationStrings strings on strings.id == kernels.copyKind 
+                inner join CUPTI_ACTIVITY_KIND_RUNTIME as runtime on kernels.correlationId = runtime.correlationId
+        ''')
+    
 connection.execute('''
     insert into ops_with_launch_time
         select
@@ -104,18 +106,19 @@ connection.execute('''
 
 
 # find the requested user ranges
-# ROCM rpd_tracer
-# connection.execute('''
-#     create temporary table user_ranges as
-#         select start, end, args from api 
-#         where apiName == "UserMarker" and args like "{}"'''.format(args.range_like))
-
-# CUDA nsys sqlite
-connection.execute('''
-    create temporary table user_ranges as 
-        select start, end, text from NVTX_EVENTS
-        where text like "{}"'''.format(args.range_like))
-
+if is_rocm_pytorch:
+    # ROCM rpd_tracer
+    connection.execute('''
+        create temporary table user_ranges as
+            select start, end, args from api 
+            where apiName == "UserMarker" and args like "{}"'''.format(args.range_like))
+else:
+    # CUDA nsys sqlite
+    connection.execute('''
+        create temporary table user_ranges as 
+            select start, end, text from NVTX_EVENTS
+            where text like "{}"'''.format(args.range_like))
+    
 
 # pull the GPU operations within range into table
 connection.execute('''

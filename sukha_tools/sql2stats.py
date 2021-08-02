@@ -150,18 +150,18 @@ cursor.execute('''
 
 print(cursor.fetchall())
 
-## export statistics in user range
-#cursor = connection.cursor()
-#cursor.execute('''
-#    select count(op_id), sum(op_duration), op_type, op_description
-#    from ops_in_user_range
-#    group by op_description
-#    order by count(op_id) desc
-#    ''')
-#
-#import csv
-#with open("{}{}.csv".format(args.input_rpd[:-3], args.range_like), "w", newline='') as csv_file: 
-#    csv_writer = csv.writer(csv_file)
-#    csv_writer.writerow([i[0] for i in cursor.description])
-#    csv_writer.writerows(cursor)
-#
+# export statistics in user range
+cursor = connection.cursor()
+cursor.execute('''
+    select count(op_id), sum(op_duration), op_type, op_description
+    from ops_in_user_range
+    group by op_description
+    order by count(op_id) desc
+    ''')
+
+import csv
+with open("{}{}.csv".format(args.input_rpd[:-3], args.range_like), "w", newline='') as csv_file: 
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow([i[0] for i in cursor.description])
+    csv_writer.writerows(cursor)
+
